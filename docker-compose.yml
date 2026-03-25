@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  vps:
+    build: .
+    container_name: my-vps
+    ports:
+      - "${SSH_PORT:-2222}:22"
+      - "443:443"
+    environment:
+      - SSH_USER=${SSH_USER:-vpsuser}
+      - SSH_PASSWORD=${SSH_PASSWORD:-SuperSecure@VPS2024!}
+      - SSH_PORT=${SSH_PORT:-2222}
+      - TUNNEL_MODE=${TUNNEL_MODE:-cloudflare}
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
