@@ -1,9 +1,9 @@
 services:
   - type: web
-    name: my-vps
+    name: node-web-app
     runtime: docker
     dockerfilePath: ./Dockerfile
-    healthCheckPath: /
+    healthCheckPath: /health
     envVars:
       - key: SSH_USER
         value: vpsuser
