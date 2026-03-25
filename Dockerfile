@@ -28,7 +28,6 @@ RUN apt-get update && apt-get install -y \
     libreadline-dev \
     libsqlite3-dev \
     stunnel4 \
-    supervisor \
     locales \
     apt-utils \
     && locale-gen en_US.UTF-8 \
@@ -56,6 +55,9 @@ RUN add-apt-repository ppa:deadsnakes/ppa -y \
     && update-alternatives --install /usr/bin/python  python  /usr/bin/python3.13 1 \
     && curl -fsSL https://bootstrap.pypa.io/get-pip.py | python3.13 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# ── supervisor via pip (Python 3.13 compatible — apt version is broken on 3.13)
+RUN python3.13 -m pip install --upgrade supervisor
 
 # ── Go 1.24.1 ────────────────────────────────────────────────────────────────
 RUN curl -fsSL https://go.dev/dl/go1.24.1.linux-amd64.tar.gz \
