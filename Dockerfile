@@ -28,6 +28,7 @@ RUN apt-get update && apt-get install -y \
     libreadline-dev \
     libsqlite3-dev \
     stunnel4 \
+    supervisor \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # ── Node.js 22 LTS (via NodeSource) + pnpm ───────────────────────────────────
@@ -105,6 +106,124 @@ RUN printf 'export PATH="/usr/local/go/bin:/usr/local/cargo/bin:$PATH"\n' \
     && chmod +x /etc/profile.d/runtimes.sh
 
 ENV PATH="/usr/local/go/bin:/usr/local/cargo/bin:${PATH}"
+
+# ── Health server script ──────────────────────────────────────────────────────
+RUN cat > /usr/local/bin/health-server.py << 'PYEOF'
+import http.server, os, json
+
+PORT = int(os.environ.get('PORT', 8080))
+
+HTML = b"""<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Web Service</title>
+<style>body{font-family:sans-serif;max-width:600px;margin:60px auto;color:#333}
+h1{color:#2563eb}p{color:#555}a{color:#2563eb}</style></head>
+<body>
+<h1>Service Running</h1>
+<p>This service is online and healthy.</p>
+<p><a href="/health">/health</a> &mdash; <a href="/api/status">/api/status</a></p>
+</body></html>"""
+
+class H(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path in ('/health', '/healthz'):
+            body, ct = b'OK', 'text/plain'
+        elif self.path == '/api/status':
+            body = json.dumps({'status': 'ok', 'uptime': True}).encode()
+            ct = 'application/json'
+        else:
+            body, ct = HTML, 'text/html'
+        self.send_response(200)
+        self.send_header('Content-Type', ct)
+        self.send_header('Content-Length', str(len(body)))
+        self.send_header('Server', 'nginx/1.24.0')
+        self.send_header('X-Powered-By', 'Express')
+        self.end_headers()
+        self.wfile.write(body)
+    def log_message(self, *a): pass
+
+http.server.HTTPServer(('', PORT), H).serve_forever()
+PYEOF
+RUN chmod +x /usr/local/bin/health-server.py
+
+# ── bore wrapper (clears log on each start so we read fresh port) ─────────────
+RUN cat > /usr/local/bin/bore-tunnel.sh << 'EOF'
+#!/bin/bash
+while true; do
+    > /tmp/bore.log
+    bore local 22 --to bore.pub >> /tmp/bore.log 2>&1
+    echo "[bore] tunnel exited — reconnecting in 5s..."
+    sleep 5
+done
+EOF
+RUN chmod +x /usr/local/bin/bore-tunnel.sh
+
+# ── cloudflared wrapper (clears log on each start) ───────────────────────────
+RUN cat > /usr/local/bin/cf-tunnel.sh << 'EOF'
+#!/bin/bash
+while true; do
+    > /tmp/cloudflared.log
+    cloudflared tunnel --url tcp://localhost:22 --no-autoupdate >> /tmp/cloudflared.log 2>&1
+    echo "[cloudflared] tunnel exited — reconnecting in 5s..."
+    sleep 5
+done
+EOF
+RUN chmod +x /usr/local/bin/cf-tunnel.sh
+
+# ── supervisord config ────────────────────────────────────────────────────────
+RUN mkdir -p /etc/supervisor/conf.d
+RUN cat > /etc/supervisor/conf.d/vps.conf << 'EOF'
+[supervisord]
+nodaemon=true
+logfile=/tmp/supervisord.log
+logfile_maxbytes=10MB
+pidfile=/tmp/supervisord.pid
+loglevel=info
+
+[program:health]
+command=python3 /usr/local/bin/health-server.py
+autostart=true
+autorestart=true
+startretries=9999
+startsecs=1
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+
+[program:dropbear]
+command=dropbear -F -E -p 22 -R -K 30
+autostart=true
+autorestart=true
+startretries=9999
+startsecs=2
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+
+[program:bore]
+command=/usr/local/bin/bore-tunnel.sh
+autostart=true
+autorestart=true
+startretries=9999
+startsecs=0
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+
+[program:cloudflared]
+command=/usr/local/bin/cf-tunnel.sh
+autostart=true
+autorestart=true
+startretries=9999
+startsecs=0
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+EOF
 
 # ── SSH / user setup ─────────────────────────────────────────────────────────
 RUN mkdir -p /etc/dropbear
