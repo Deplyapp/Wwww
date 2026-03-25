@@ -73,8 +73,11 @@ RUN apt-get update && apt-get install -y openjdk-21-jdk \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 
-# ── PHP 8.3 (ondrej/php PPA) ─────────────────────────────────────────────────
-RUN add-apt-repository ppa:ondrej/php -y \
+# ── PHP 8.3 (Launchpad PPA — direct source, no add-apt-repository) ───────────
+RUN curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x14AA40EC0831756756D7F66C4F4EA0AAE5267A6C" \
+        | gpg --dearmor -o /etc/apt/trusted.gpg.d/ondrej-php.gpg \
+    && echo "deb [signed-by=/etc/apt/trusted.gpg.d/ondrej-php.gpg] https://ppa.launchpadcontent.net/ondrej/php/ubuntu jammy main" \
+        > /etc/apt/sources.list.d/ondrej-php.list \
     && apt-get update \
     && apt-get install -y \
         php8.3 \
@@ -85,10 +88,9 @@ RUN add-apt-repository ppa:ondrej/php -y \
         php8.3-xml \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# ── Ruby 3.3 (brightbox PPA) ─────────────────────────────────────────────────
-RUN add-apt-repository ppa:brightbox/ruby-ng -y \
-    && apt-get update \
-    && apt-get install -y ruby3.3 ruby3.3-dev \
+# ── Ruby 3.1 (Ubuntu 22.04 default — no PPA needed, always works) ─────────────
+RUN apt-get update \
+    && apt-get install -y ruby ruby-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # ── Bun (system-wide via BUN_INSTALL=/usr/local) ─────────────────────────────
