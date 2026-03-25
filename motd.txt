@@ -11,7 +11,7 @@
     Rust     stable   (rustc, cargo)
     Java     21 LTS   (java, javac)
     PHP      8.3      (php)
-    Ruby     3.3      (ruby, gem)
+    Ruby     3.1      (ruby, gem)
     Bun      latest   (bun)
     Deno     latest   (deno)
 
