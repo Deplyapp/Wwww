@@ -6,6 +6,11 @@ HTTP_PORT=${PORT:-8080}
 
 echo "${SSH_USER}:${SSH_PASSWORD}" | chpasswd
 
+rm -f /etc/nologin
+
+mkdir -p /home/${SSH_USER}
+chown ${SSH_USER}:${SSH_USER} /home/${SSH_USER}
+
 echo ""
 echo "============================================================"
 echo "  [1/4] Starting HTTP health server on port ${HTTP_PORT}..."
@@ -32,37 +37,35 @@ http.server.HTTPServer(('', PORT), SilentHandler).serve_forever()
 sleep 1
 echo "  Health server running."
 
-echo "  [2/4] Starting SSH server..."
-/usr/sbin/sshd
+echo ""
+echo "  [2/4] Generating SSH host keys..."
+dropbearkey -t rsa -f /etc/dropbear/dropbear_rsa_host_key 2>/dev/null || true
+dropbearkey -t ecdsa -f /etc/dropbear/dropbear_ecdsa_host_key 2>/dev/null || true
+dropbearkey -t ed25519 -f /etc/dropbear/dropbear_ed25519_host_key 2>/dev/null || true
+
+echo "  [3/4] Starting SSH server (Dropbear) on port 22..."
+dropbear -E -p 22 -R
 echo "  SSH server started."
 
-echo "  [3/4] Starting TLS wrapper (stunnel)..."
-stunnel4 /etc/stunnel/stunnel.conf
-echo "  Stunnel started."
-
 echo ""
-echo "  [4/4] Starting tunnels (bore + Cloudflare)..."
+echo "  [4/4] Starting tunnels..."
 echo ""
 
-CF_LOG=/tmp/cloudflared.log
 BORE_LOG=/tmp/bore.log
+CF_LOG=/tmp/cloudflared.log
 
-# Always start bore first — works directly with Termius mobile, no proxy needed
 bore local 22 --to bore.pub > "$BORE_LOG" 2>&1 &
 BORE_PID=$!
 
-# Also start Cloudflare tunnel for desktop/antiban use
 cloudflared tunnel --url tcp://localhost:22 --no-autoupdate > "$CF_LOG" 2>&1 &
 CF_PID=$!
 
-# Wait for bore to get a port (fast, usually ~3 sec)
 for i in $(seq 1 15); do
     sleep 2
     BORE_PORT=$(grep -oP '(?<=bore.pub:)\d+' "$BORE_LOG" | head -1)
     [ -n "$BORE_PORT" ] && break
 done
 
-# Wait for Cloudflare URL
 for i in $(seq 1 20); do
     sleep 2
     CF_URL=$(grep -oP 'https://[a-z0-9\-]+\.trycloudflare\.com' "$CF_LOG" | head -1)
@@ -75,24 +78,23 @@ echo "============================================================"
 echo "  VPS IS READY"
 echo "============================================================"
 echo ""
-echo "  ── TERMIUS / MOBILE (direct, no proxy needed) ──"
+echo "  ── TERMIUS / MOBILE (use this) ──"
 if [ -n "$BORE_PORT" ]; then
     echo "  Host     : bore.pub"
     echo "  Port     : ${BORE_PORT}"
     echo "  Username : ${SSH_USER}"
     echo "  Password : ${SSH_PASSWORD}"
     echo ""
-    echo "  SSH command:"
-    echo "    ssh ${SSH_USER}@bore.pub -p ${BORE_PORT}"
+    echo "  SSH: ssh ${SSH_USER}@bore.pub -p ${BORE_PORT}"
 else
-    echo "  bore tunnel not ready yet — check logs in a moment"
+    echo "  bore not ready yet — check logs in a moment"
 fi
 echo ""
-echo "  ── DESKTOP (antiban via Cloudflare HTTPS) ──"
+echo "  ── DESKTOP (antiban Cloudflare) ──"
 if [ -n "$CF_URL" ]; then
     echo "  ssh -o ProxyCommand='cloudflared access tcp --hostname ${CF_URL}' ${SSH_USER}@${CF_HOST}"
 else
-    echo "  Cloudflare tunnel not ready yet — check logs in a moment"
+    echo "  Cloudflare tunnel not ready yet"
 fi
 echo ""
 echo "============================================================"
