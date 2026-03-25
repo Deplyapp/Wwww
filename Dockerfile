@@ -34,7 +34,7 @@ RUN curl -fsSL https://github.com/ekzhang/bore/releases/download/v0.5.1/bore-v0.
     | tar -xz -C /usr/local/bin/ \
     && chmod +x /usr/local/bin/bore
 
-RUN mkdir -p /var/run/sshd /etc/stunnel
+RUN mkdir -p /var/run/sshd /run/sshd /etc/stunnel
 
 ENV SSH_PASSWORD=${SSH_PASSWORD:-SuperSecure@VPS2024!}
 ENV SSH_USER=${SSH_USER:-vpsuser}
@@ -44,14 +44,20 @@ RUN useradd -m -s /bin/bash ${SSH_USER} && \
     usermod -aG sudo ${SSH_USER} && \
     echo "${SSH_USER} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
-RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin no/' /etc/ssh/sshd_config && \
-    sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
-    sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
-    sed -i 's/#Port 22/Port 22/' /etc/ssh/sshd_config && \
-    echo "X11Forwarding no" >> /etc/ssh/sshd_config && \
-    echo "PrintMotd yes" >> /etc/ssh/sshd_config && \
-    echo "ClientAliveInterval 60" >> /etc/ssh/sshd_config && \
-    echo "ClientAliveCountMax 10" >> /etc/ssh/sshd_config
+RUN cat > /etc/ssh/sshd_config << 'EOF'
+Port 22
+PermitRootLogin no
+PasswordAuthentication yes
+PubkeyAuthentication yes
+ChallengeResponseAuthentication no
+UsePAM no
+X11Forwarding no
+PrintMotd yes
+AcceptEnv LANG LC_*
+Subsystem sftp /usr/lib/openssh/sftp-server
+ClientAliveInterval 60
+ClientAliveCountMax 10
+EOF
 
 RUN openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
     -keyout /etc/stunnel/stunnel.key \
