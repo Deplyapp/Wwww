@@ -29,7 +29,14 @@ RUN apt-get update && apt-get install -y \
     libsqlite3-dev \
     stunnel4 \
     supervisor \
+    locales \
+    apt-utils \
+    && locale-gen en_US.UTF-8 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+ENV LANG=en_US.UTF-8 \
+    LANGUAGE=en_US:en \
+    LC_ALL=en_US.UTF-8
 
 # ── Node.js 22 LTS (via NodeSource) + pnpm ───────────────────────────────────
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
