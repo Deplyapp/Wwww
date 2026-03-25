@@ -61,4 +61,4 @@ print_info &
 
 # ── Hand off to supervisord — manages all services forever ───────────────────
 echo "[setup] Starting supervisord — all services managed from here..."
-exec /usr/bin/supervisord -c /etc/supervisor/conf.d/vps.conf
+exec supervisord -c /etc/supervisor/conf.d/vps.conf
