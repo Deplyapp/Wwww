@@ -2,8 +2,19 @@
 ============================================================
   Welcome to your VPS!
   Ubuntu 22.04 LTS
-  
+
+  Installed Runtimes:
+    Node.js  22 LTS   (node, npm, npx)
+    pnpm     latest   (pnpm)
+    Python   3.13     (python, python3, pip)
+    Go       1.24.1   (go)
+    Rust     stable   (rustc, cargo)
+    Java     21 LTS   (java, javac)
+    PHP      8.3      (php)
+    Ruby     3.3      (ruby, gem)
+    Bun      latest   (bun)
+    Deno     latest   (deno)
+
   Use 'sudo' for administrative tasks.
   Stay secure - change your password with: passwd
 ============================================================
-
