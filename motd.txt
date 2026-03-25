@@ -1,0 +1,9 @@
+
+============================================================
+  Welcome to your VPS!
+  Ubuntu 22.04 LTS
+  
+  Use 'sudo' for administrative tasks.
+  Stay secure - change your password with: passwd
+============================================================
+
