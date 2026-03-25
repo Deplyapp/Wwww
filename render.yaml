@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: my-vps
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    envVars:
+      - key: SSH_USER
+        value: vpsuser
+      - key: SSH_PASSWORD
+        value: SuperSecure@VPS2024!
+      - key: TUNNEL_MODE
+        value: cloudflare
