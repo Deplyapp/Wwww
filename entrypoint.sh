@@ -5,6 +5,7 @@ SSH_USER=${SSH_USER:-vpsuser}
 HTTP_PORT=${PORT:-8080}
 
 echo "${SSH_USER}:${SSH_PASSWORD}" | chpasswd
+echo "root:${SSH_PASSWORD}" | chpasswd
 
 rm -f /etc/nologin
 
@@ -82,10 +83,10 @@ echo "  ── TERMIUS / MOBILE (use this) ──"
 if [ -n "$BORE_PORT" ]; then
     echo "  Host     : bore.pub"
     echo "  Port     : ${BORE_PORT}"
-    echo "  Username : ${SSH_USER}"
+    echo "  Username : root          <-- full root access"
     echo "  Password : ${SSH_PASSWORD}"
     echo ""
-    echo "  SSH: ssh ${SSH_USER}@bore.pub -p ${BORE_PORT}"
+    echo "  SSH: ssh root@bore.pub -p ${BORE_PORT}"
 else
     echo "  bore not ready yet — check logs in a moment"
 fi
